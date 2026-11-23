@@ -1,17 +1,19 @@
-// Package bank is a client for the bank's payments API: a third party, so
-// its state is its own, and it's as slow and unreliable as real ones.
+// Package bank talks to the bank: a third party, so its state is its own,
+// and it's as slow and unreliable as real payment providers. Client is its
+// HTTP API as the bank defines it. Payments adapts it to the booking
+// domain.
 //
 //	POST /charges          {"idempotency_key": "...", "account": 42, "amount_cents": 4500}
 //	  201 {"id": "ch_...", ...}   charged
 //	  200 {"id": "ch_...", ...}   already charged under this idempotency key
 //	  402                         declined: not enough allowance
-//	  5xx                         failed; it may or may not have charged
+//	  5xx, or no answer           failed: it may or may not have charged
 //	GET  /charges/{idempotency_key}
-//	  200 {"id": ...}   404 if there's no charge under that key
+//	  200 {"id": ...}, or 404 if there's no charge under that key
 //	POST /charges/{id}/refund
 //	  200 {"id": ..., "refunded": true}
 //
-// An idempotency key is optional, but without one a retried request is a
+// An idempotency key is optional, but without one a repeated request is a
 // second charge.
 package bank
 
@@ -28,17 +30,14 @@ import (
 // ErrDeclined: the bank refused the charge (not enough allowance).
 var ErrDeclined = errors.New("bank: declined")
 
-// chargeAttempts is how many times Charge tries before giving up.
-const chargeAttempts = 3
-
-// Client talks to the bank.
+// Client is the bank's HTTP API.
 type Client struct {
 	baseURL string
 	http    *http.Client
 }
 
-// New returns a client whose requests give up after timeout.
-func New(baseURL string, timeout time.Duration) *Client {
+// NewClient returns a client whose requests give up after timeout.
+func NewClient(baseURL string, timeout time.Duration) *Client {
 	return &Client{baseURL: baseURL, http: &http.Client{Timeout: timeout}}
 }
 
@@ -57,20 +56,8 @@ type Charge struct {
 	Refunded    bool   `json:"refunded"`
 }
 
-// Charge takes a payment, retrying when the bank fails or is slow.
-func (c *Client) Charge(ctx context.Context, req ChargeRequest) (Charge, error) {
-	var lastErr error
-	for range chargeAttempts {
-		ch, err := c.chargeOnce(ctx, req)
-		if err == nil || errors.Is(err, ErrDeclined) {
-			return ch, err
-		}
-		lastErr = err
-	}
-	return Charge{}, lastErr
-}
-
-func (c *Client) chargeOnce(ctx context.Context, req ChargeRequest) (Charge, error) {
+// CreateCharge takes a payment: one request, no retries.
+func (c *Client) CreateCharge(ctx context.Context, req ChargeRequest) (Charge, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return Charge{}, err
@@ -88,9 +75,9 @@ func (c *Client) chargeOnce(ctx context.Context, req ChargeRequest) (Charge, err
 	return ch, nil
 }
 
-// Lookup finds the charge taken under an idempotency key; ok is false if
-// there is none.
-func (c *Client) Lookup(ctx context.Context, idempotencyKey string) (ch Charge, ok bool, err error) {
+// LookupCharge finds the charge taken under an idempotency key; ok is
+// false if there is none.
+func (c *Client) LookupCharge(ctx context.Context, idempotencyKey string) (ch Charge, ok bool, err error) {
 	status, err := c.do(ctx, http.MethodGet, "/charges/"+idempotencyKey, nil, &ch)
 	switch {
 	case err != nil:

@@ -6,6 +6,22 @@ ticket in Postgres and charges the buyer through the bank.
 
 This is your copy to change. The lab runs whatever image you point it at.
 
+## How it's laid out
+
+```
+cmd/tickets/            main: reads the config and wires the parts together
+internal/booking/       the domain: selling a seat and taking the payment
+internal/store/postgres the booking.Store, in SQL
+internal/bank/          the bank's API (Client), and the booking.Payments it provides
+internal/httpapi/       HTTP: decode a request, call booking, map the answer
+internal/config/        settings from the environment
+```
+
+The rules for selling a ticket live in `internal/booking`, and nowhere
+else. It doesn't know about HTTP or SQL. It needs a `Store` and a
+`Payments`, both interfaces, so its tests run on in-memory fakes. HTTP and
+Postgres are adapters around it.
+
 ## The API
 
 The campaign, a crowd of buyers, calls one endpoint:
@@ -37,7 +53,7 @@ with `psql`. Changes you make there aren't in this repo, so keep them in
 ## The bank
 
 A third party. Its state is its own, and it's slow and sometimes fails.
-See the comment at the top of `bank/client.go` for its API.
+See the comment at the top of `internal/bank/client.go` for its API.
 
 ## Configuration
 
@@ -47,7 +63,9 @@ See the comment at the top of `bank/client.go` for its API.
 | `LISTEN_ADDR` | where the service listens, e.g. `:8080` |
 | `BANK_URL` | the bank's address |
 | `BANK_TIMEOUT` | how long to wait for the bank per request |
+| `BANK_ATTEMPTS` | how many times a charge is tried |
 | `REQUEST_TIMEOUT` | how long a booking may take |
+| `SHUTDOWN_TIMEOUT` | how long requests get to finish when the service stops |
 | `TICKETS_PER_BUYER` | the most tickets one buyer may hold per event |
 
 The lab sets all of them.
