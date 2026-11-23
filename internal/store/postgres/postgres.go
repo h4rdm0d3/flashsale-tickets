@@ -46,17 +46,12 @@ func (s *Store) BuyerCount(ctx context.Context, eventID, buyer int64) (int64, er
 	return n, err
 }
 
-func (s *Store) CreateTicket(ctx context.Context, eventID, buyer int64) (booking.Ticket, error) {
+func (s *Store) CreateTicket(ctx context.Context, eventID, buyer int64, chargeID string) (booking.Ticket, error) {
 	t := booking.Ticket{EventID: eventID, Buyer: buyer}
 	err := s.db.QueryRow(ctx,
-		`insert into bookings (event_id, buyer) values ($1, $2) returning id`, eventID, buyer,
+		`insert into bookings (event_id, buyer, charge_id) values ($1, $2, $3) returning id`, eventID, buyer, chargeID,
 	).Scan(&t.ID)
 	return t, err
-}
-
-func (s *Store) MarkPaid(ctx context.Context, ticketID int64, chargeID string) error {
-	_, err := s.db.Exec(ctx, `update bookings set charge_id = $1 where id = $2`, chargeID, ticketID)
-	return err
 }
 
 // Ping reports whether the database answers.

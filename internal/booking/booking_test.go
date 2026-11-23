@@ -49,15 +49,11 @@ func (s *memStore) BuyerCount(_ context.Context, eventID, buyer int64) (int64, e
 	return n, nil
 }
 
-func (s *memStore) CreateTicket(_ context.Context, eventID, buyer int64) (Ticket, error) {
+func (s *memStore) CreateTicket(_ context.Context, eventID, buyer int64, chargeID string) (Ticket, error) {
 	t := Ticket{ID: int64(len(s.tickets) + 1), EventID: eventID, Buyer: buyer}
 	s.tickets = append(s.tickets, t)
+	s.paid[t.ID] = chargeID
 	return t, nil
-}
-
-func (s *memStore) MarkPaid(_ context.Context, ticketID int64, chargeID string) error {
-	s.paid[ticketID] = chargeID
-	return nil
 }
 
 // fakePayments approves every charge unless told to decline.
@@ -90,7 +86,7 @@ func TestBookSellsAndCharges(t *testing.T) {
 		t.Errorf("charges = %+v", pay.charges)
 	}
 	if store.paid[ticket.ID] != "ch_1" {
-		t.Errorf("the ticket wasn't marked paid: %v", store.paid)
+		t.Errorf("the ticket wasn't recorded with its charge: %v", store.paid)
 	}
 }
 
