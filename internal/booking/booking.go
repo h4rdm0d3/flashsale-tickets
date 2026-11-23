@@ -43,10 +43,8 @@ type Store interface {
 	SoldCount(ctx context.Context, eventID int64) (int64, error)
 	// BuyerCount is how many tickets of the event the buyer holds.
 	BuyerCount(ctx context.Context, eventID, buyer int64) (int64, error)
-	// CreateTicket records a ticket.
-	CreateTicket(ctx context.Context, eventID, buyer int64) (Ticket, error)
-	// MarkPaid records the payment that paid for a ticket.
-	MarkPaid(ctx context.Context, ticketID int64, chargeID string) error
+	// CreateTicket records a ticket, paid for by a charge.
+	CreateTicket(ctx context.Context, eventID, buyer int64, chargeID string) (Ticket, error)
 }
 
 // Payment is a request to take money from a buyer.
@@ -96,17 +94,14 @@ func (s *Service) Book(ctx context.Context, eventID, buyer int64) (Ticket, error
 		return Ticket{}, ErrLimitReached
 	}
 
-	ticket, err := s.store.CreateTicket(ctx, eventID, buyer)
-	if err != nil {
-		return Ticket{}, fmt.Errorf("recording the ticket: %w", err)
-	}
-
+	// Take the payment, then record the ticket it paid for.
 	chargeID, err := s.payments.Charge(ctx, Payment{Buyer: buyer, AmountCents: event.PriceCents})
 	if err != nil {
 		return Ticket{}, fmt.Errorf("charging the buyer: %w", err)
 	}
-	if err := s.store.MarkPaid(ctx, ticket.ID, chargeID); err != nil {
-		return Ticket{}, fmt.Errorf("recording the payment: %w", err)
+	ticket, err := s.store.CreateTicket(ctx, eventID, buyer, chargeID)
+	if err != nil {
+		return Ticket{}, fmt.Errorf("recording the ticket: %w", err)
 	}
 	return ticket, nil
 }
