@@ -1,0 +1,3 @@
+# Copy to ~/values.yaml in the lab and run `deploy`. The image must be
+# public, so the lab can pull it.
+image: ghcr.io/your-name/flashsale-tickets:0123456789ab
