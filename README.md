@@ -15,6 +15,7 @@ internal/store/postgres the booking.Store, in SQL
 internal/bank/          the bank's API (Client), and the booking.Payments it provides
 internal/httpapi/       HTTP: decode a request, call booking, map the answer
 internal/config/        settings from the environment
+internal/profiling/     the Go runtime's profiles, on their own port
 ```
 
 The rules for selling a ticket live in `internal/booking`, and nowhere
@@ -61,6 +62,7 @@ See the comment at the top of `internal/bank/client.go` for its API.
 |---|---|
 | `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | Postgres |
 | `LISTEN_ADDR` | where the service listens, e.g. `:8080` |
+| `PPROF_ADDR` | where the Go profiles are served for the lab's Profiles tab, e.g. `:6060` |
 | `BANK_URL` | the bank's address |
 | `BANK_TIMEOUT` | how long to wait for the bank per request |
 | `BANK_ATTEMPTS` | how many times a charge is tried |

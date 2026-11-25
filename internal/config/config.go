@@ -15,6 +15,9 @@ import (
 type Config struct {
 	// ListenAddr is where the HTTP server listens, e.g. ":8080".
 	ListenAddr string
+	// PprofAddr is where the Go runtime's profiles are served, e.g. ":6060",
+	// for the lab's profiler. Keep it off the public port.
+	PprofAddr string
 	// BankURL is the bank's address; BankTimeout bounds each request to it,
 	// and BankAttempts is how many times a charge is tried.
 	BankURL      string
@@ -34,6 +37,7 @@ func FromEnv() (Config, error) {
 	r := reader{}
 	c := Config{
 		ListenAddr:      r.str("LISTEN_ADDR"),
+		PprofAddr:       r.str("PPROF_ADDR"),
 		BankURL:         r.str("BANK_URL"),
 		BankTimeout:     r.duration("BANK_TIMEOUT"),
 		BankAttempts:    int(r.positive("BANK_ATTEMPTS")),

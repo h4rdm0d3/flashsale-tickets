@@ -17,6 +17,7 @@ import (
 	"github.com/h4rdm0d3/flashsale-tickets/internal/booking"
 	"github.com/h4rdm0d3/flashsale-tickets/internal/config"
 	"github.com/h4rdm0d3/flashsale-tickets/internal/httpapi"
+	"github.com/h4rdm0d3/flashsale-tickets/internal/profiling"
 	"github.com/h4rdm0d3/flashsale-tickets/internal/store/postgres"
 )
 
@@ -52,10 +53,16 @@ func run(log *slog.Logger) error {
 		Handler:           httpapi.New(service, store, cfg.RequestTimeout, log),
 		ReadHeaderTimeout: cfg.RequestTimeout,
 	}
-	errc := make(chan error, 1)
+	// The profiles, on a port of their own (the lab's profiler reads them).
+	prof := &http.Server{Addr: cfg.PprofAddr, Handler: profiling.Handler(), ReadHeaderTimeout: cfg.RequestTimeout}
+	errc := make(chan error, 2)
 	go func() {
 		log.Info("tickets listening", "addr", cfg.ListenAddr)
 		errc <- srv.ListenAndServe()
+	}()
+	go func() {
+		log.Info("profiles listening", "addr", cfg.PprofAddr)
+		errc <- prof.ListenAndServe()
 	}()
 	select {
 	case err := <-errc:
@@ -65,6 +72,8 @@ func run(log *slog.Logger) error {
 	log.Info("shutting down")
 	shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
+	// Profiles first: they can't hold up requests that are finishing.
+	_ = prof.Close()
 	if err := srv.Shutdown(shutdown); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
