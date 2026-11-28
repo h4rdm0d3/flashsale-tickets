@@ -69,6 +69,7 @@ See the comment at the top of `internal/bank/client.go` for its API.
 | `REQUEST_TIMEOUT` | how long a booking may take |
 | `SHUTDOWN_TIMEOUT` | how long requests get to finish when the service stops |
 | `TICKETS_PER_BUYER` | the most tickets one buyer may hold per event |
+| `DB_MAX_CONNS` | the most database connections the service holds at once (unset: one per CPU) |
 
 The lab sets all of them.
 

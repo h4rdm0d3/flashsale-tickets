@@ -38,7 +38,14 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	db, err := pgxpool.New(ctx, "") // the standard PG* variables
+	dbConfig, err := pgxpool.ParseConfig("") // the standard PG* variables
+	if err != nil {
+		return err
+	}
+	if cfg.DBMaxConns > 0 {
+		dbConfig.MaxConns = cfg.DBMaxConns
+	}
+	db, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return err
 	}
