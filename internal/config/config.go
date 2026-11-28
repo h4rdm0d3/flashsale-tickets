@@ -30,6 +30,9 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	// TicketsPerBuyer is the most tickets one buyer may hold per event.
 	TicketsPerBuyer int64
+	// DBMaxConns is the most database connections the service holds at
+	// once. Zero leaves pgx's default: one per CPU, at least four.
+	DBMaxConns int32
 }
 
 // FromEnv reads the Config from the environment.
@@ -44,6 +47,9 @@ func FromEnv() (Config, error) {
 		RequestTimeout:  r.duration("REQUEST_TIMEOUT"),
 		ShutdownTimeout: r.duration("SHUTDOWN_TIMEOUT"),
 		TicketsPerBuyer: r.positive("TICKETS_PER_BUYER"),
+	}
+	if os.Getenv("DB_MAX_CONNS") != "" {
+		c.DBMaxConns = int32(r.positive("DB_MAX_CONNS"))
 	}
 	return c, errors.Join(r.errs...)
 }
